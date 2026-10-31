@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow 演示</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-2: #f7f7f5;
+    --bg-3: #f1efea;
+    --bg-hover: #f4f2ee;
+    --text: #2c2c2a;
+    --text-2: #5f5e5a;
+    --text-3: #9a9890;
+    --line: rgba(44,44,42,0.10);
+    --line-strong: rgba(44,44,42,0.18);
+    --accent: #185fa5;
+    --accent-soft: #e6f0f9;
+    --red: #d64545;
+    --amber: #e09b2d;
+    --blue: #4a86d4;
+    --green: #1d9e75;
+    --r-md: 8px;
+    --r-lg: 12px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: "Microsoft YaHei", "PingFang SC", -apple-system, system-ui, sans-serif;
+    background: #e9e7e2;
+    color: var(--text);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { display: flex; align-items: center; justify-content: center; padding: 24px; }
+
+  .window {
+    width: 100%;
+    max-width: 1000px;
+    height: 100%;
+    max-height: 660px;
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .titlebar {
+    height: 34px;
+    flex: none;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 0 14px;
+  }
+  .titlebar .name { font-size: 12px; color: var(--text-2); letter-spacing: .2px; }
+  .win-btns { display: flex; }
+  .win-btns span {
+    width: 40px; height: 32px; display: flex; align-items: center; justify-content: center;
+    color: var(--text-3); font-size: 13px; cursor: default;
+  }
+  .win-btns span:hover { background: var(--bg-hover); color: var(--text-2); }
+  .win-btns span.close:hover { background: #e81123; color: #fff; }
+
+  .app { flex: 1; display: flex; min-height: 0; }
+
+  .sidebar {
+    width: 180px; flex: none;
+    background: var(--bg-2);
+    border-right: 1px solid var(--line);
+    padding: 12px 8px;
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 9px; border-radius: 6px; cursor: pointer;
+    color: var(--text-2); font-size: 13px; user-select: none;
+  }
+  .nav-item:hover { background: var(--bg-hover); }
+  .nav-item.active { background: var(--bg); color: var(--text); font-weight: 500; box-shadow: 0 0 0 1px var(--line); }
+  .nav-item .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-item .cnt { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .nav-item.active .cnt { color: var(--accent); }
+  .nav-item .badge {
+    width: 6px; height: 6px; border-radius: 50%; flex: none;
+  }
+  .nav-sep { height: 1px; background: var(--line); margin: 8px 9px; }
+  .nav-label { font-size: 11px; color: var(--text-3); padding: 6px 9px 4px; }
+
+  .sidebar .foot { margin-top: auto; padding: 10px 9px 2px; font-size: 11px; color: var(--text-3); line-height: 1.6; }
+
+  .main { flex: 1; display: flex; min-width: 0; }
+
+  .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .content-head {
+    height: 52px; flex: none;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .content-head h1 { font-size: 17px; font-weight: 500; flex: 1; }
+  .head-btn {
+    border: none; background: transparent; color: var(--text-3);
+    font-size: 12px; padding: 5px 8px; border-radius: 6px; cursor: pointer;
+    font-family: inherit;
+  }
+  .head-btn:hover { background: var(--bg-hover); color: var(--text-2); }
+
+  .search-wrap { display: none; align-items: center; gap: 6px; background: var(--bg-3); border-radius: 6px; padding: 4px 8px; width: 200px; }
+  .search-wrap.on { display: flex; }
+  .search-wrap input { border: none; background: transparent; outline: none; font-family: inherit; font-size: 12px; width: 100%; color: var(--text); }
+  .search-wrap input::placeholder { color: var(--text-3); }
+
+  .list-area { flex: 1; overflow-y: auto; padding: 8px 20px 24px; }
+
+  .group-title {
+    font-size: 11px; color: var(--text-3); margin: 16px 0 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .group-title:first-child { margin-top: 6px; }
+  .group-title .n { color: var(--text-3); }
+
+  .task {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 8px 8px; margin: 0 -8px;
+    border-radius: 6px; cursor: pointer; position: relative;
+  }
+  .task:hover { background: var(--bg-hover); }
+  .task.sel { background: var(--accent-soft); }
+
+  .check {
+    width: 15px; height: 15px; flex: none; margin-top: 2px;
+    border: 1.2px solid var(--line-strong); border-radius: 50%;
+    background: transparent; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .12s;
+  }
+  .check:hover { border-color: var(--green); }
+  .check svg { opacity: 0; }
+  .task.done .check { background: var(--green); border-color: var(--green); }
+  .task.done .check svg { opacity: 1; }
+
+  .task-body { flex: 1; min-width: 0; }
+  .task-title { font-size: 13px; line-height: 1.45; color: var(--text); word-break: break-word; }
+  .task.done .task-title { color: var(--text-3); text-decoration: line-through; }
+  .task-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .task-meta .due-late { color: var(--red); }
+  .task-meta .due-today { color: var(--amber); }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; margin-top: 6px; }
+  .dot.high { background: var(--red); }
+  .dot.medium { background: var(--amber); }
+  .dot.low { background: var(--blue); }
+  .dot.none { background: transparent; width: 0; margin: 0; }
+
+  .del-btn {
+    opacity: 0; border: none; background: transparent; color: var(--text-3);
+    font-size: 15px; cursor: pointer; padding: 0 4px; line-height: 1; flex: none;
+    font-family: inherit;
+  }
+  .task:hover .del-btn { opacity: 1; }
+  .del-btn:hover { color: var(--red); }
+
+  .add-row {
+    margin-top: 6px; padding: 9px 8px; margin-left: -8px; margin-right: -8px;
+    display: flex; align-items: center; gap: 9px; color: var(--text-3); cursor: text;
+    border-radius: 6px;
+  }
+  .add-row:hover { background: var(--bg-hover); }
+  .add-row .plus { width: 15px; text-align: center; font-size: 14px; flex: none; }
+  .add-row input { border: none; outline: none; background: transparent; font-family: inherit; font-size: 13px; flex: 1; color: var(--text); }
+  .add-row input::placeholder { color: var(--text-3); }
+
+  .empty { text-align: center; padding: 56px 20px; color: var(--text-3); font-size: 12px; line-height: 1.9; }
+  .empty strong { display: block; color: var(--text-2); font-weight: 500; font-size: 13px; margin-bottom: 4px; }
+
+  .detail {
+    width: 300px; flex: none; border-left: 1px solid var(--line);
+    background: var(--bg-2); padding: 16px; overflow-y: auto;
+    display: none;
+  }
+  .detail.on { display: block; }
+  .detail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .detail-head span { font-size: 11px; color: var(--text-3); }
+  .icon-btn { border: none; background: transparent; color: var(--text-3); cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 4px; font-family: inherit; }
+  .icon-btn:hover { background: var(--bg-hover); color: var(--text-2); }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11px; color: var(--text-3); margin-bottom: 5px; }
+  .field input[type="text"], .field textarea, .field select, .field input[type="datetime-local"] {
+    width: 100%; font-family: inherit; font-size: 12px; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 7px 9px; outline: none;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus, .field input[type="datetime-local"]:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 2px rgba(24,95,165,0.10);
+  }
+  .field textarea { resize: vertical; min-height: 76px; line-height: 1.6; }
+  .field-title input { font-size: 14px; padding: 8px 10px; }
+
+  .detail-foot { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; display: flex; gap: 8px; }
+  .btn {
+    font-family: inherit; font-size: 12px; padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--bg); color: var(--text-2); cursor: pointer;
+  }
+  .btn:hover { background: var(--bg-hover); }
+  .btn.danger { color: var(--red); border-color: rgba(214,69,69,0.3); }
+  .btn.danger:hover { background: rgba(214,69,69,0.06); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #14507f; }
+  .btn.block { width: 100%; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(30,30,28,0.18);
+    display: none; align-items: flex-start; justify-content: center;
+    padding-top: 15vh; z-index: 60;
+  }
+  .overlay.on { display: flex; }
+
+  .quick {
+    width: 540px; max-width: calc(100vw - 40px);
+    background: var(--bg); border: 1px solid var(--line-strong);
+    border-radius: 10px; padding: 14px 16px;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.20);
+  }
+  .quick .qrow { display: flex; align-items: center; gap: 8px; }
+  .quick input.qinput {
+    flex: 1; border: none; outline: none; font-family: inherit; font-size: 15px;
+    color: var(--text); padding: 6px 0;
+  }
+  .quick input.qinput::placeholder { color: var(--text-3); }
+  .quick .hintkey { font-size: 10px; color: var(--text-3); border: 1px solid var(--line); border-radius: 4px; padding: 2px 5px; }
+  .chips { display: flex; gap: 7px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .chip {
+    font-size: 12px; padding: 4px 11px; border-radius: 12px;
+    border: 1px solid var(--line-strong); background: var(--bg); color: var(--text-2);
+    cursor: pointer; font-family: inherit;
+  }
+  .chip:hover { background: var(--bg-hover); }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .chips .spacer { flex: 1; }
+  .chips .tip { font-size: 11px; color: var(--text-3); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 40px; transform: translate(-50%, 12px);
+    background: #2c2c2a; color: #f5f4f0; font-size: 12px;
+    padding: 10px 12px 10px 16px; border-radius: 8px;
+    display: flex; align-items: center; gap: 14px;
+    opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s;
+    z-index: 80;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .toast button {
+    background: transparent; border: none; color: #8ec5f0; font-size: 12px;
+    cursor: pointer; font-family: inherit; padding: 0;
+  }
+  .toast button:hover { color: #b6dcff; }
+
+  .notif {
+    position: fixed; right: 24px; bottom: 24px; width: 320px;
+    background: var(--bg); border: 1px solid var(--line-strong);
+    border-radius: 10px; padding: 14px 16px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.18);
+    transform: translateY(16px); opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s; z-index: 90;
+  }
+  .notif.on { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .notif .appname { font-size: 10px; color: var(--text-3); letter-spacing: .4px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .notif .ntitle { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .notif .ntime { font-size: 11px; color: var(--text-3); margin-bottom: 10px; }
+  .notif .nbtns { display: flex; gap: 8px; }
+
+  .demo-tip {
+    position: fixed; left: 24px; bottom: 24px; font-size: 11px; color: var(--text-2);
+    background: var(--bg); border: 1px solid var(--line-strong); border-radius: 8px;
+    padding: 9px 12px; line-height: 1.8; box-shadow: 0 6px 20px rgba(0,0,0,0.10); z-index: 50;
+  }
+  .demo-tip b { font-weight: 500; color: var(--text); }
+  .demo-tip kbd {
+    font-family: inherit; font-size: 10px; border: 1px solid var(--line-strong);
+    border-radius: 3px; padding: 1px 4px; background: var(--bg-3); color: var(--text-2);
+  }
+  .demo-tip .x { position: absolute; top: 4px; right: 6px; cursor: pointer; color: var(--text-3); font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: rgba(44,44,42,0.18); border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(44,44,42,0.30); background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="titlebar">
+    <span class="name">TaskFlow</span>
+    <div class="win-btns">
+      <span>&#8211;</span><span>&#9744;</span><span class="close">&#10005;</span>
+    </div>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div class="main">
+      <div class="content">
+        <div class="content-head">
+          <h1 id="viewTitle">今天</h1>
+          <div class="search-wrap" id="searchWrap">
+            <input id="searchInput" type="text" placeholder="搜索任务…">
+          </div>
+          <button class="head-btn" id="searchBtn" title="搜索 Ctrl+F">搜索</button>
+          <button class="head-btn" id="notifyBtn" title="模拟一次到点提醒">模拟提醒</button>
+          <button class="head-btn" id="quickBtn" title="快速添加 Ctrl+Alt+N">快速添加</button>
+        </div>
+
+        <div class="list-area" id="listArea"></div>
+      </div>
+
+      <aside class="detail" id="detail"></aside>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="quick">
+    <div class="qrow">
+      <input class="qinput" id="qinput" type="text" placeholder="想到什么？直接写下来…">
+      <span class="hintkey">Enter</span>
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip" data-due="today">今天</button>
+      <button class="chip" data-due="tomorrow">明天</button>
+      <button class="chip" data-due="friday">本周五</button>
+      <span class="spacer"></span>
+      <span class="tip">不选日期 → 进收件箱</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastAct"></button></div>
+
+<div class="notif" id="notif">
+  <div class="appname"><span>TaskFlow</span><span>现在</span></div>
+  <div class="ntitle" id="notifTitle"></div>
+  <div class="ntime" id="notifTime"></div>
+  <div class="nbtns">
+    <button class="btn primary" id="notifDone">标记完成</button>
+    <button class="btn" id="notifLater">10 分钟后提醒</button>
+  </div>
+</div>
+
+<div class="demo-tip" id="demoTip">
+  <span class="x" onclick="document.getElementById('demoTip').style.display='none'">&#10005;</span>
+  <b>演示提示</b><br>
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> 快速添加<br>
+  <kbd>Ctrl</kbd>+<kbd>F</kbd> 搜索 · <kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销<br>
+  点任务标题查看详情
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var LISTS = [
+    { id: 'inbox', name: '收件箱' },
+    { id: 'work', name: '工作' },
+    { id: 'life', name: '生活' }
+  ];
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function toLocal(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function dateOnly(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function at(offsetDays, h, m) {
+    var d = new Date();
+    d.setHours(h == null ? 0 : h, m == null ? 0 : m, 0, 0);
+    d.setDate(d.getDate() + offsetDays);
+    return toLocal(d);
+  }
+
+  function fridayAt18() {
+    var d = new Date();
+    d.setHours(18, 0, 0, 0);
+    var diff = (5 - d.getDay() + 7) % 7;
+    d.setDate(d.getDate() + diff);
+    return toLocal(d);
+  }
+
+  var uid = 0;
+  function nextId() { uid += 1; return 't' + uid; }
+
+  var state = {
+    view: 'today',
+    selectedId: null,
+    query: '',
+    tasks: [],
+    lastAction: null
+  };
+
+  function seed() {
+    var rows = [
+      { title: '提交报销单', listId: 'work', priority: 'high', due: at(-2, 18, 0), note: '9 月出差费用，共 4 张发票。' },
+      { title: '给张总反馈预算方案', listId: 'work', priority: 'high', due: at(0, 18, 0), note: '重点说明 Q4 的差旅与外包两块。\n附上上个季度的对比数据。' },
+      { title: '整理季度复盘材料', listId: 'work', priority: 'medium', due: at(0, 20, 0), note: '' },
+      { title: '电话问候外婆', listId: 'life', priority: 'low', due: at(0, 21, 0), note: '' },
+      { title: '看《深度工作》第三章', listId: 'inbox', priority: 'none', due: null, note: '做两页笔记。' },
+      { title: '读完《原则》', listId: 'inbox', priority: 'none', due: null, note: '' },
+      { title: '预约牙医', listId: 'life', priority: 'medium', due: at(1, 10, 0), note: '' },
+      { title: '订下周出差的机票', listId: 'work', priority: 'high', due: at(1, 20, 0), note: '周二上午出发。' },
+      { title: '买猫粮', listId: 'life', priority: 'none', due: at(2, 19, 0), note: '' }
+    ];
+
+    state.tasks = rows.map(function (r) {
+      return {
+        id: nextId(),
+        title: r.title,
+        note: r.note,
+        listId: r.listId,
+        priority: r.priority,
+        due: r.due,
+        done: false,
+        deletedAt: null,
+        completedAt: null,
+        createdAt: toLocal(new Date())
+      };
+    });
+
+    state.tasks.push({
+      id: nextId(),
+      title: '晨会同步进度',
+      note: '',
+      listId: 'work',
+      priority: 'none',
+      due: at(0, 9, 0),
+      done: true,
+      deletedAt: null,
+      completedAt: at(0, 9, 30),
+      createdAt: at(-1, 9, 0)
+    });
+  }
+
+  function alive() {
+    return state.tasks.filter(function (t) { return !t.deletedAt; });
+  }
+
+  function find(id) {
+    for (var i = 0; i < state.tasks.length; i++) {
+      if (state.tasks[i].id === id) return state.tasks[i];
+    }
+    return null;
+  }
+
+  function listName(id) {
+    for (var i = 0; i < LISTS.length; i++) if (LISTS[i].id === id) return LISTS[i].name;
+    return '收件箱';
+  }
+
+  function isOverdue(t) {
+    if (!t.due || t.done) return false;
+    return dateOnly(new Date(t.due)) < dateOnly(new Date());
+  }
+
+  function isToday(t) {
+    if (!t.due) return false;
+    return dateOnly(new Date(t.due)) === dateOnly(new Date());
+  }
+
+  function dueLabel(t) {
+    if (!t.due) return { text: '', cls: '' };
+    var d = new Date(t.due);
+    var hh = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var diffDays = Math.round((new Date(dateOnly(d)) - new Date(dateOnly(new Date()))) / 86400000);
+    if (diffDays < 0) return { text: '逾期 ' + (-diffDays) + ' 天', cls: 'due-late' };
+    if (diffDays === 0) return { text: '今天 ' + hh, cls: 'due-today' };
+    if (diffDays === 1) return { text: '明天 ' + hh, cls: '' };
+    return { text: (d.getMonth() + 1) + '-' + d.getDate() + ' ' + hh, cls: '' };
+  }
+
+  function sortByDue(a, b) {
+    if (!a.due && !b.due) return 0;
+    if (!a.due) return 1;
+    if (!b.due) return -1;
+    return a.due < b.due ? -1 : a.due > b.due ? 1 : 0;
+  }
+
+  function currentScopeTasks() {
+    var all = alive();
+    if (state.view === 'completed') {
+      return all.filter(function (t) { return t.done; })
+        .sort(function (a, b) { return (b.completedAt || '') < (a.completedAt || '') ? -1 : 1; });
+    }
+    if (state.view === 'today') {
+      return all.filter(function (t) { return !t.done && (isOverdue(t) || isToday(t) || !t.due); });
+    }
+    return all.filter(function (t) { return !t.done && t.listId === state.view; }).sort(sortByDue);
+  }
+
+  function searchTasks() {
+    var q = state.query.trim().toLowerCase();
+    if (!q) return [];
+    return alive().filter(function (t) {
+      return t.title.toLowerCase().indexOf(q) >= 0 || (t.note || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  function counts() {
+    var c = { inbox: 0, work: 0, life: 0, today: 0, completed: 0 };
+    alive().forEach(function (t) {
+      if (t.done) { c.completed++; return; }
+      c[t.listId] = (c[t.listId] || 0) + 1;
+      if (isOverdue(t) || isToday(t)) c.today++;
+    });
+    return c;
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function renderSidebar() {
+    var sb = document.getElementById('sidebar');
+    var c = counts();
+    sb.innerHTML = '';
+
+    function nav(key, label, count, dot) {
+      var item = el('div', 'nav-item' + (state.view === key && !state.query ? ' active' : ''));
+      if (dot) {
+        var b = el('span', 'badge');
+        b.style.background = dot;
+        item.appendChild(b);
+      }
+      item.appendChild(el('span', 'lbl', label));
+      if (count) item.appendChild(el('span', 'cnt', String(count)));
+      item.addEventListener('click', function () { setView(key); });
+      sb.appendChild(item);
+    }
+
+    nav('today', '今天', c.today, c.today ? 'var(--red)' : null);
+    nav('inbox', '收件箱', c.inbox, null);
+    sb.appendChild(el('div', 'nav-sep'));
+    nav('work', '工作', c.work, null);
+    nav('life', '生活', c.life, null);
+    sb.appendChild(el('div', 'nav-sep'));
+    nav('completed', '已完成', c.completed, null);
+
+    var foot = el('div', 'foot');
+    foot.innerHTML = '共 ' + alive().filter(function (t) { return !t.done; }).length + ' 条未完成<br>数据为演示用途';
+    sb.appendChild(foot);
+  }
+
+  function renderDetail() {
+    var box = document.getElementById('detail');
+    var t = state.selectedId ? find(state.selectedId) : null;
+    if (!t) { box.classList.remove('on'); box.innerHTML = ''; return; }
+
+    box.classList.add('on');
+    box.innerHTML = '';
+
+    var head = el('div', 'detail-head');
+    head.appendChild(el('span', null, '任务详情'));
+    var close = el('button', 'icon-btn');
+    close.innerHTML = '&#10005;';
+    close.title = '关闭 (Esc)';
+    close.addEventListener('click', function () { selectTask(null); });
+    head.appendChild(close);
+    box.appendChild(head);
+
+    var f1 = el('div', 'field field-title');
+    f1.appendChild(el('label', null, '标题'));
+    var ti = document.createElement('input');
+    ti.type = 'text';
+    ti.value = t.title;
+    ti.addEventListener('input', function () {
+      t.title = ti.value;
+      renderSidebar();
+      renderList();
+    });
+    f1.appendChild(ti);
+    box.appendChild(f1);
+
+    var f2 = el('div', 'field');
+    f2.appendChild(el('label', null, '备注'));
+    var ta = document.createElement('textarea');
+    ta.value = t.note || '';
+    ta.placeholder = '补充说明…';
+    ta.addEventListener('input', function () { t.note = ta.value; });
+    f2.appendChild(ta);
+    box.appendChild(f2);
+
+    var f3 = el('div', 'field');
+    f3.appendChild(el('label', null, '截止时间'));
+    var di = document.createElement('input');
+    di.type = 'datetime-local';
+    di.value = t.due || '';
+    di.addEventListener('change', function () {
+      t.due = di.value || null;
+      renderSidebar(); renderList();
+    });
+    f3.appendChild(di);
+    box.appendChild(f3);
+
+    var f4 = el('div', 'field');
+    f4.appendChild(el('label', null, '优先级'));
+    var se = document.createElement('select');
+    [['none', '无'], ['low', '低'], ['medium', '中'], ['high', '高']].forEach(function (p) {
+      var o = document.createElement('option');
+      o.value = p[0]; o.textContent = p[1];
+      if (t.priority === p[0]) o.selected = true;
+      se.appendChild(o);
+    });
+    se.addEventListener('change', function () {
+      t.priority = se.value;
+      renderSidebar(); renderList();
+    });
+    f4.appendChild(se);
+    box.appendChild(f4);
+
+    var f5 = el('div', 'field');
+    f5.appendChild(el('label', null, '所属清单'));
+    var sl = document.createElement('select');
+    LISTS.forEach(function (l) {
+      var o = document.createElement('option');
+      o.value = l.id; o.textContent = l.name;
+      if (t.listId === l.id) o.selected = true;
+      sl.appendChild(o);
+    });
+    sl.addEventListener('change', function () {
+      t.listId = sl.value;
+      renderSidebar(); renderList();
+    });
+    f5.appendChild(sl);
+    box.appendChild(f5);
+
+    var foot = el('div', 'detail-foot');
+    var del = el('button', 'btn danger', '删除');
+    del.addEventListener('click', function () { removeTask(t.id); });
+    foot.appendChild(del);
+    var done = el('button', 'btn primary', t.done ? '取消完成' : '标记完成');
+    done.addEventListener('click', function () { toggleDone(t.id); });
+    foot.appendChild(done);
+    box.appendChild(foot);
+  }
+
+  function groupOf(t) {
+    if (isOverdue(t)) return 'overdue';
+    if (isToday(t)) return 'today';
+    return 'unscheduled';
+  }
+
+  function renderList() {
+    var area = document.getElementById('listArea');
+    var title = document.getElementById('viewTitle');
+    area.innerHTML = '';
+
+    if (state.query.trim()) {
+      title.textContent = '搜索：' + state.query.trim();
+      var res = searchTasks();
+      if (!res.length) {
+        area.appendChild(emptyBlock('没有匹配的任务', '换个关键词试试，搜索会同时查标题和备注。'));
+        return;
+      }
+      res.forEach(function (t) { area.appendChild(taskRow(t, true)); });
+      return;
+    }
+
+    if (state.view === 'today') title.textContent = '今天';
+    else if (state.view === 'completed') title.textContent = '已完成';
+    else title.textContent = listName(state.view);
+
+    var tasks = currentScopeTasks();
+
+    if (state.view === 'today') {
+      var groups = [
+        { key: 'overdue', label: '已逾期' },
+        { key: 'today', label: '今天到期' },
+        { key: 'unscheduled', label: '未排期' }
+      ];
+      var any = false;
+      groups.forEach(function (g) {
+        var items = tasks.filter(function (t) { return groupOf(t) === g.key; });
+        if (!items.length) return;
+        any = true;
+        area.appendChild(groupTitle(g.label, items.length));
+        items.sort(sortByDue).forEach(function (t) { area.appendChild(taskRow(t, true)); });
+      });
+      if (!any) {
+        area.appendChild(emptyBlock('今天没有待办', '按 Ctrl+Alt+N 随手记一条，或者休息一下。'));
+      }
+    } else if (state.view === 'completed') {
+      if (!tasks.length) {
+        area.appendChild(emptyBlock('还没有完成的任务', '勾掉第一条任务后，它会出现在这里。'));
+      } else {
+        tasks.forEach(function (t) { area.appendChild(taskRow(t, false)); });
+      }
+    } else {
+      if (!tasks.length) {
+        area.appendChild(emptyBlock('这个清单还是空的', '在下方输入框里添加第一条任务。'));
+      } else {
+        tasks.forEach(function (t) { area.appendChild(taskRow(t, false)); });
+      }
+    }
+
+    if (state.view !== 'completed') area.appendChild(addRow());
+  }
+
+  function groupTitle(label, n) {
+    var d = el('div', 'group-title');
+    d.appendChild(el('span', null, label));
+    d.appendChild(el('span', 'n', String(n)));
+    return d;
+  }
+
+  function emptyBlock(head, sub) {
+    var d = el('div', 'empty');
+    var h = el('strong', null, head);
+    d.appendChild(h);
+    d.appendChild(document.createTextNode(sub));
+    return d;
+  }
+
+  function taskRow(t, showCheck) {
+    var row = el('div', 'task' + (t.done ? ' done' : '') + (state.selectedId === t.id ? ' sel' : ''));
+    row.dataset.id = t.id;
+
+    var chk = el('button', 'check');
+    chk.title = '标记完成 (Space)';
+    chk.innerHTML = '<svg width="9" height="9" viewBox="0 0 10 10"><path d="M1.5 5.2L4 7.5L8.5 2.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    chk.addEventListener('click', function (e) { e.stopPropagation(); toggleDone(t.id); });
+    row.appendChild(chk);
+
+    var dot = el('span', 'dot ' + t.priority);
+    row.appendChild(dot);
+
+    var body = el('div', 'task-body');
+    body.appendChild(el('div', 'task-title', t.title));
+
+    var meta = el('div', 'task-meta');
+    meta.appendChild(el('span', null, listName(t.listId)));
+    var dl = dueLabel(t);
+    if (dl.text) {
+      var s = el('span', dl.cls, dl.text);
+      meta.appendChild(s);
+    }
+    if (t.note) meta.appendChild(el('span', null, '有备注'));
+    body.appendChild(meta);
+    row.appendChild(body);
+
+    var del = el('button', 'del-btn', '\u00d7');
+    del.title = '删除';
+    del.addEventListener('click', function (e) { e.stopPropagation(); removeTask(t.id); });
+    row.appendChild(del);
+
+    row.addEventListener('click', function () { selectTask(t.id); });
+    return row;
+  }
+
+  function addRow() {
+    var row = el('div', 'add-row');
+    row.appendChild(el('span', 'plus', '+'));
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = '添加任务…';
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && input.value.trim()) {
+        createTask(input.value.trim(), null);
+        input.value = '';
+      }
+      e.stopPropagation();
+    });
+    row.appendChild(input);
+    row.addEventListener('click', function () { input.focus(); });
+    return row;
+  }
+
+  function setView(key) {
+    state.view = key;
+    state.query = '';
+    state.selectedId = null;
+    var sw = document.getElementById('searchWrap');
+    sw.classList.remove('on');
+    document.getElementById('searchInput').value = '';
+    render();
+  }
+
+  function selectTask(id) {
+    state.selectedId = id;
+    renderList();
+    renderDetail();
+  }
+
+  function render() {
+    renderSidebar();
+    renderList();
+    renderDetail();
+  }
+
+  function toggleDone(id) {
+    var t = find(id);
+    if (!t) return;
+    var prevDone = t.done;
+    var prevCompletedAt = t.completedAt;
+    t.done = !t.done;
+    t.completedAt = t.done ? toLocal(new Date()) : null;
+    state.lastAction = { type: 'toggle', id: id, prevDone: prevDone, prevCompletedAt: prevCompletedAt };
+    render();
+    if (t.done) showToast('已完成「' + t.title + '」', '撤销');
+  }
+
+  function removeTask(id) {
+    var t = find(id);
+    if (!t) return;
+    t.deletedAt = toLocal(new Date());
+    if (state.selectedId === id) state.selectedId = null;
+    state.lastAction = { type: 'delete', id: id };
+    render();
+    showToast('已移到回收站', '撤销');
+  }
+
+  function createTask(title, due) {
+    var listId = state.view === 'today' || state.view === 'completed' ? 'inbox' : state.view;
+    var t = {
+      id: nextId(),
+      title: title,
+      note: '',
+      listId: listId,
+      priority: 'none',
+      due: due || null,
+      done: false,
+      deletedAt: null,
+      completedAt: null,
+      createdAt: toLocal(new Date())
+    };
+    state.tasks.push(t);
+    state.lastAction = { type: 'create', id: t.id };
+    if (state.query) { state.query = ''; document.getElementById('searchInput').value = ''; }
+    render();
+    showToast('已添加「' + title + '」', '撤销');
+  }
+
+  function undo() {
+    var a = state.lastAction;
+    if (!a) return;
+    if (a.type === 'toggle') {
+      var t = find(a.id);
+      if (t) { t.done = a.prevDone; t.completedAt = a.prevCompletedAt; }
+    } else if (a.type === 'delete') {
+      var d = find(a.id);
+      if (d) d.deletedAt = null;
+    } else if (a.type === 'create') {
+      var c = find(a.id);
+      if (c) c.deletedAt = toLocal(new Date());
+    }
+    state.lastAction = null;
+    render();
+    hideToast();
+    showToast('已撤销', '');
+  }
+
+  var toastTimer = null;
+  function showToast(msg, actionLabel) {
+    var box = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    var act = document.getElementById('toastAct');
+    act.textContent = actionLabel || '';
+    act.style.display = actionLabel ? 'block' : 'none';
+    box.classList.add('on');
+    clearTimeout(toastTimer);
+    if (actionLabel) {
+      toastTimer = setTimeout(function () { box.classList.remove('on'); }, 5000);
+    } else {
+      toastTimer = setTimeout(function () { box.classList.remove('on'); }, 1800);
+    }
+  }
+  function hideToast() {
+    document.getElementById('toast').classList.remove('on');
+    clearTimeout(toastTimer);
+  }
+
+  var quickDue = null;
+  function openQuick() {
+    var ov = document.getElementById('overlay');
+    ov.classList.add('on');
+    quickDue = null;
+    var qi = document.getElementById('qinput');
+    qi.value = '';
+    Array.prototype.forEach.call(document.querySelectorAll('#chips .chip'), function (c) {
+      c.classList.remove('on');
+    });
+    setTimeout(function () { qi.focus(); }, 30);
+  }
+  function closeQuick() {
+    document.getElementById('overlay').classList.remove('on');
+  }
+  function submitQuick() {
+    var qi = document.getElementById('qinput');
+    var v = qi.value.trim();
+    if (!v) { closeQuick(); return; }
+    createTask(v, quickDue);
+    closeQuick();
+  }
+
+  function showNotif() {
+    var cands = alive().filter(function (t) { return !t.done && t.due; }).sort(sortByDue);
+    if (!cands.length) { showToast('没有带截止时间的任务可提醒', ''); return; }
+    var t = cands[0];
+    document.getElementById('notifTitle').textContent = t.title;
+    var dl = dueLabel(t);
+    document.getElementById('notifTime').textContent = (dl.text || '') + ' · ' + listName(t.listId);
+    var box = document.getElementById('notif');
+    box.classList.add('on');
+    box.dataset.id = t.id;
+  }
+  function hideNotif() { document.getElementById('notif').classList.remove('on'); }
+
+  function bind() {
+    document.getElementById('searchBtn').addEventListener('click', openSearch);
+    document.getElementById('notifyBtn').addEventListener('click', showNotif);
+    document.getElementById('quickBtn').addEventListener('click', openQuick);
+    document.getElementById('toastAct').addEventListener('click', function () {
+      var a = state.lastAction;
+      if (a) undo();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', function (e) {
+      state.query = e.target.value;
+      renderList();
+    });
+
+    document.getElementById('overlay').addEventListener('mousedown', function (e) {
+      if (e.target.id === 'overlay') closeQuick();
+    });
+
+    document.getElementById('qinput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitQuick();
+      if (e.key === 'Escape') closeQuick();
+      e.stopPropagation();
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('#chips .chip'), function (chip) {
+      chip.addEventListener('click', function () {
+        var kind = chip.dataset.due;
+        if (kind === 'today') quickDue = at(0, 18, 0);
+        if (kind === 'tomorrow') quickDue = at(1, 18, 0);
+        if (kind === 'friday') quickDue = fridayAt18();
+        var isOn = chip.classList.contains('on');
+        Array.prototype.forEach.call(document.querySelectorAll('#chips .chip'), function (c) {
+          c.classList.remove('on');
+        });
+        if (!isOn) chip.classList.add('on');
+        else quickDue = null;
+        document.getElementById('qinput').focus();
+      });
+    });
+
+    document.getElementById('notifDone').addEventListener('click', function () {
+      var id = document.getElementById('notif').dataset.id;
+      hideNotif();
+      var t = find(id);
+      if (t && !t.done) toggleDone(id);
+    });
+    document.getElementById('notifLater').addEventListener('click', function () {
+      hideNotif();
+      showToast('10 分钟后再次提醒', '');
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target.tagName || '').toLowerCase();
+      var typing = tag === 'input' || tag === 'textarea' || tag === 'select';
+
+      if (e.ctrlKey && e.altKey && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault(); openQuick(); return;
+      }
+      if (e.ctrlKey && !e.altKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault(); openSearch(); return;
+      }
+      if (e.ctrlKey && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault(); undo(); return;
+      }
+      if (e.key === 'Escape') {
+        if (document.getElementById('overlay').classList.contains('on')) { closeQuick(); return; }
+        if (document.getElementById('notif').classList.contains('on')) { hideNotif(); return; }
+        if (state.selectedId) { selectTask(null); return; }
+        if (state.query) { setView(state.view); }
+        return;
+      }
+      if (typing) return;
+
+      if (e.key === ' ' && state.selectedId) {
+        e.preventDefault(); toggleDone(state.selectedId);
+      }
+      if (e.key === 'Delete' && state.selectedId) {
+        e.preventDefault(); removeTask(state.selectedId);
+      }
+    });
+  }
+
+  function openSearch() {
+    var sw = document.getElementById('searchWrap');
+    sw.classList.add('on');
+    var si = document.getElementById('searchInput');
+    si.focus();
+    si.select();
+  }
+
+  seed();
+  bind();
+  render();
+})();
+</script>
+</body>
+</html>
